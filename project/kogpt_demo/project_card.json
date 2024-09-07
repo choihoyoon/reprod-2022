@@ -1,0 +1,43 @@
+{
+  "language": "Korean",
+  "license": "apache-2.0",
+  "task": "multi-class",
+  "data": {
+    "dataset": "../data/three_demo.csv",
+    "data_size": "15.974410057067871 MB",
+    "user_upload": 1,
+    "data_shape": {
+      "row": 659,
+      "column": 2
+    },
+    "split": {
+      "split_type": "auto",
+      "train": 0.8,
+      "valid": 0.16000000000000003,
+      "test": 0.2
+    },
+    "input": "PAPER_TEXT",
+    "target": "RCMN_CD1",
+    "num_labels": 3,
+    "tokenizer": "skt/kogpt2-base-v2"
+  },
+  "model": {
+    "name": "skt/kogpt2-base-v2",
+    "args": {
+      "max_length": 8,
+      "n_epochs": 4,
+      "lr": 1.6266246859806895e-05,
+      "dropout": 0.19592891961278336,
+      "batch_size": 8
+    },
+    "auto_tuning": 1,
+    "metrics": {
+      "loss": 0.7968165278434753,
+      "accuracy": 0.6603325605392456,
+      "val_loss": 1.3017065525054932,
+      "val_accuracy": 0.46226415038108826,
+      "test_loss": 1.3634918928146362,
+      "test_accuracy": 0.47727271914482117
+    }
+  }
+}
