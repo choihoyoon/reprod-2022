@@ -1,0 +1,358 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "4a4e08ac-a9f4-41ad-a9c9-15b8a22ec10f",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "nE_eXv_s1e1b"
+   },
+   "outputs": [],
+   "source": [
+    "import transformers\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import urllib.request\n",
+    "import os\n",
+    "from tqdm import tqdm\n",
+    "import tensorflow as tf\n",
+    "from transformers import BertTokenizer, TFBertModel\n",
+    "from sklearn.model_selection import train_test_split"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "e5a1cfcd-5f6a-4f39-9633-8312d2658415",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "ow6Rfi472RNA",
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "def convert_examples_to_features(self, examples, labels):\n",
+    "    input_ids, attention_masks, token_type_ids, data_labels = [], [], [], []\n",
+    "    \n",
+    "    for example, label in tqdm(zip(examples, labels), total=len(examples)):\n",
+    "        input_id = self.tokenizer.encode(example, max_length=self.max_seq_len, pad_to_max_length=True)\n",
+    "        padding_count = input_id.count(self.tokenizer.pad_token_id)\n",
+    "        attention_mask = [1] * (self.max_seq_len - padding_count) + [0] * padding_count\n",
+    "        token_type_id = [0] * self.max_seq_len\n",
+    "\n",
+    "        assert len(input_id) == self.max_seq_len, \"Error with input length {} vs {}\".format(len(input_id),\n",
+    "                                                                                            self.max_seq_len)\n",
+    "        assert len(attention_mask) == self.max_seq_len, \"Error with attention mask length {} vs {}\".format(\n",
+    "            len(attention_mask), self.max_seq_len)\n",
+    "        assert len(token_type_id) == self.max_seq_len, \"Error with token type length {} vs {}\".format(\n",
+    "            len(token_type_id), self.max_seq_len)\n",
+    "\n",
+    "        input_ids.append(input_id)\n",
+    "        attention_masks.append(attention_mask)\n",
+    "        token_type_ids.append(token_type_id)\n",
+    "        data_labels.append(label)\n",
+    "\n",
+    "    input_ids = np.array(input_ids, dtype=int)\n",
+    "    attention_masks = np.array(attention_masks, dtype=int)\n",
+    "    token_type_ids = np.array(token_type_ids, dtype=int)\n",
+    "    \n",
+    "    data_labels = np.asarray(data_labels, dtype=np.int32)\n",
+    "    \n",
+    "    return (input_ids, attention_masks, token_type_ids), data_labels"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "951ca961-a6c4-4b11-9330-33cdee73e193",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "AxdWu-fp2TX5"
+   },
+   "outputs": [],
+   "source": [
+    "class TFBertForSequenceClassification(tf.keras.Model):\n",
+    "    def __init__(self, model_name, activation, num_labels):\n",
+    "        super(TFBertForSequenceClassification, self).__init__()\n",
+    "        self.bert = TFBertModel.from_pretrained(model_name, from_pt=True)\n",
+    "        self.classifier = tf.keras.layers.Dense(num_labels,\n",
+    "                                                kernel_initializer=tf.keras.initializers.TruncatedNormal(0.02),\n",
+    "                                                activation=activation,\n",
+    "                                                name='classifier')\n",
+    "\n",
+    "    def call(self, inputs):\n",
+    "        input_ids, attention_mask, token_type_ids = inputs\n",
+    "        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)\n",
+    "        cls_token = outputs[1]\n",
+    "        prediction = self.classifier(cls_token)\n",
+    "\n",
+    "    return prediction"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "b021fe2c-4215-43ad-accb-42a90d445c7f",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "ipPOZgtV2VRP"
+   },
+   "outputs": [],
+   "source": [
+    "df = pd.read_csv('../data/original.csv')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "32681a8e-d250-4e8f-8aed-db12e0d55c01",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "HAZ3oJk42X__"
+   },
+   "outputs": [],
+   "source": [
+    "target = df[['{{ target }}']]\n",
+    "train_data, test_data = train_test_split(df, test_size={{ test_size }}, random_state=777, shuffle=True,\n",
+    "                                         stratify=target)\n",
+    "target = train_data[['{{ target }}']]\n",
+    "train_data, valid_data = train_test_split(train_data, test_size=0.2, random_state=777, shuffle=True,\n",
+    "                                          stratify=target)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "e17f0bb8-f127-4816-9742-72cfcef08448",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "SeBrZ2mh2dU7"
+   },
+   "outputs": [],
+   "source": [
+    "tokenizer = BertTokenizer.from_pretrained('klue/bert-base')\n",
+    "max_seq_len = {{ max_length }}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "8b9e0ddd-2fb1-48d7-b61b-5811c53c36bf",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "h2pDXZag2fSD"
+   },
+   "outputs": [],
+   "source": [
+    "train_X, train_y = convert_examples_to_features(train_data['{{ input }}'], train_data['{{ target }}'],\n",
+    "                                                max_seq_len=max_seq_len, tokenizer=tokenizer)\n",
+    "valid_X, valid_y = convert_examples_to_features(valid_data['{{ input }}'], valid_data['{{ target }}'],\n",
+    "                                                max_seq_len=max_seq_len, tokenizer=tokenizer)\n",
+    "test_X, test_y = convert_examples_to_features(test_data['{{ input }}'], test_data['{{ target }}'],\n",
+    "                                              max_seq_len=max_seq_len, tokenizer=tokenizer)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "bc4ede95-e05e-4b9c-9a10-d5776df37782",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "z1HKJneA2mLZ"
+   },
+   "outputs": [],
+   "source": [
+    "if '{{ task }}' == 'binary':\n",
+    "    model = TFBertForSequenceClassification(\"klue/bert-base\", activation='sigmoid', num_labels=1)\n",
+    "    loss = tf.keras.losses.BinaryCrossentropy()\n",
+    "elif '{{ task }}' == 'multi-class':\n",
+    "    num_labels = df['{{ target }}'].nunique()\n",
+    "    model = TFBertForSequenceClassification(\"klue/bert-base\", activation='softmax', num_labels=num_labels)\n",
+    "    loss = tf.keras.losses.SparseCategoricalCrossentropy()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "b47a29cb-4932-423e-ac8a-f4feec46d506",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "PNfdQfUi2yyk"
+   },
+   "outputs": [],
+   "source": [
+    "optimizer = tf.keras.optimizers.Adam(learning_rate={{ lr }})\n",
+    "model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "afab5c23-02e3-41b6-85b9-7dd7fbf6f732",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "290JUCAX20Nj"
+   },
+   "outputs": [],
+   "source": [
+    "history = model.fit(train_X, train_y, epochs={{ n_epochs }}, batch_size= {{ batch_size }},\n",
+    "                    validation_data=(valid_X, valid_y))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "canvas": {
+     "comments": [],
+     "componentType": "CodeCell",
+     "copiedOriginId": null,
+     "diskcache": false,
+     "headerColor": "none",
+     "id": "8153d458-6d96-4b05-baec-4c387c185198",
+     "isComponent": false,
+     "name": "",
+     "parents": []
+    },
+    "id": "_h-erMNo22_I"
+   },
+   "outputs": [],
+   "source": [
+    "results = model.evaluate(test_X, test_y)\n",
+    "print(\"test loss, test acc: \", results)"
+   ]
+  }
+ ],
+ "metadata": {
+  "canvas": {
+   "colorPalette": [
+    "inherit",
+    "inherit",
+    "inherit",
+    "inherit",
+    "inherit",
+    "inherit",
+    "inherit",
+    "inherit",
+    "inherit",
+    "inherit"
+   ],
+   "parameters": []
+  },
+  "colab": {
+   "authorship_tag": "ABX9TyPLfzNsXWLELPOQ+baCs0sH",
+   "collapsed_sections": [],
+   "provenance": []
+  },
+  "kernelspec": {
+   "display_name": "Python 3.7 (Link)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.11"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}

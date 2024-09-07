@@ -1,0 +1,18 @@
+{
+    "project": "kogpt_demo",
+    "task": "multi-class",
+    "model": "kogpt2",
+    "prj_pth": "../project/kogpt_demo",
+    "data_fn": "../data/three_demo.csv",
+    "split_type": "auto",
+    "train": 0.8,
+    "test": 0.2,
+    "input": "PAPER_TEXT",
+    "target": "RCMN_CD1",
+    "max_length": 8,
+    "auto": 1,
+    "n_epochs": 4,
+    "lr": 1.6266246859806895e-05,
+    "dropout": 0.19592891961278336,
+    "batch_size": 8
+}

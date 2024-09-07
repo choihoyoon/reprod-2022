@@ -1,0 +1,43 @@
+{
+  "language": "Korean",
+  "license": "apache-2.0",
+  "task": "{{ task }}",
+  "data": {
+    "dataset": "{{ dataset }}",
+    "data_size": "{{ data_size }}",
+    "user_upload": 1,
+    "data_shape": {
+      "row": {{ row }},
+      "column": {{ column }}
+    },
+    "split": {
+      "split_type": "{{ split_type }}",
+      "train": {{ train }},
+      "valid": {{ valid }},
+      "test": {{ test }}
+    },
+    "input": "{{ input }}",
+    "target": "{{ target }}",
+    "num_labels": {{ num_labels }},
+    "tokenizer": "{{ tokenizer }}"
+  },
+  "model": {
+    "name": "{{ model }}",
+    "args": {
+      "max_length": {{ max_length }},
+      "n_epochs": {{ n_epochs }},
+      "lr": {{ lr }},
+      "dropout": {{ dropout }},
+      "batch_size": {{ batch_size }}
+    },
+    "auto_tuning": {{ auto_tuning }},
+    "metrics": {
+      "loss": {{ loss }},
+      "accuracy": {{ accuracy }},
+      "val_loss": {{ val_loss }},
+      "val_accuracy": {{ val_accuracy }},
+      "test_loss": {{ test_loss }},
+      "test_accuracy": {{ test_accuracy }}
+    }
+  }
+}

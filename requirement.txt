@@ -1,0 +1,11 @@
+keras==2.9.0
+numpy==1.21.6
+pandas==1.1.5
+plotly==5.9.0
+sklearn==0.0
+tensorflow-gpu==2.9.1
+#torch==1.12.1+cu116
+#torchaudio==0.12.1+cu116
+#torchvision==0.13.1+cu116
+tqdm==4.64.0
+transformers==4.21.1
